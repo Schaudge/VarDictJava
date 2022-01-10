@@ -1972,7 +1972,7 @@ public class StructuralVariantsProcessor implements Module<RealignedVariationDat
     }
 
     /**
-     * Will rescue some SNVs that are sofly clipped due to at the end of the read
+     * Will rescue some SNVs that are softly clipped due to at the end of the read
      */
     private void adjSNV() {
         for (Map.Entry<Integer, Sclip> entry: softClips5End.entrySet()) {

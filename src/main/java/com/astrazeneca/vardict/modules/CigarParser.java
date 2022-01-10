@@ -208,13 +208,12 @@ public class CigarParser implements Module<RecordPreprocessor, VariationData> {
     }
 
     /**
-     * Modify the CIGAR for potential mis-alignment for indels at the end of reads to softclipping
+     * Modify the CIGAR for potential mis-alignment for indels at the end of reads to soft-clipping
      * and let VarDict's algorithm to figure out indels
      * @param chrName name of chromosome from region
      * @param record SAMRecord to process
      */
-    private void parseCigar(String chrName,
-                           SAMRecord record) {
+    private void parseCigar(String chrName, SAMRecord record) {
         String querySequence = record.getReadString();
         int mappingQuality = record.getMappingQuality();
         cigar = record.getCigar();
@@ -263,8 +262,8 @@ public class CigarParser implements Module<RecordPreprocessor, VariationData> {
         readPositionExcludingSoftClipped = 0;
 
         if (instance().conf.performLocalRealignment) {
-            // Modify the CIGAR for potential mis-alignment for indels at the end of reads to softclipping and let VarDict's
-            // algorithm to figure out indels
+            // Modify the CIGAR for potential mis-alignment for indels at the end of reads to soft-clipping and
+            // let VarDict's algorithm to figure out indels
             CigarModifier cigarModifier = new CigarModifier(record.getAlignmentStart(),
                     record.getCigarString(),
                     querySequence,
@@ -293,7 +292,7 @@ public class CigarParser implements Module<RecordPreprocessor, VariationData> {
             discordantCount++;
         }
 
-        //Ignore reads that are softclipped at both ends and both greater than 10 bp
+        //Ignore reads that are soft-clipped at both ends and both greater than 10 bp
         if (BEGIN_dig_dig_S_ANY_dig_dig_S_END.matcher(cigar.toString()).find()) {
             return;
         }
@@ -790,7 +789,7 @@ public class CigarParser implements Module<RecordPreprocessor, VariationData> {
                         break;
                     }
                     //If base quality is less than $GOODQ, exit loop
-                    if (queryQuality.charAt(readPositionIncludingSoftClipped + vi) - 33 < instance().conf.goodq) {
+                    if (queryQuality.charAt(readPositionIncludingSoftClipped + vi) - 30 < instance().conf.goodq) {
                         break;
                     }
                     //If reference sequence has base at this position and it matches read base, update offset
@@ -1572,10 +1571,9 @@ public class CigarParser implements Module<RecordPreprocessor, VariationData> {
         }
     }
 
-    static CigarOperator getCigarOperator(Cigar cigar,
-                                                 int ci) {
+    static CigarOperator getCigarOperator(Cigar cigar, int ci) {
         CigarOperator operator =  cigar.getCigarElement(ci).getOperator();
-        // Treat insertions at the edge as soft-clipping
+        // Treat insertions at the edge as soft-clipping ( The realigned bam was confused! ?? Schaudge King)
         if ((ci == 0 || ci == cigar.numCigarElements() - 1) && operator == CigarOperator.I) {
             operator = CigarOperator.S;
         }

@@ -10,6 +10,7 @@ import com.astrazeneca.vardict.data.scopedata.VariationData;
 import com.astrazeneca.vardict.printers.VariantPrinter;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.HashSet;
@@ -35,8 +36,8 @@ public class SplicingMode extends AbstractMode {
      * In not parallel mode each region will be processed in sequence.
      */
     @Override
-    public void notParallel() {
-        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
+    public void notParallel() throws FileNotFoundException {
+        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, instance().outputFileName);
 
         for (List<Region> list : segments) {
             for (Region region : list) {
@@ -64,7 +65,7 @@ public class SplicingMode extends AbstractMode {
      * In parallel mode workers are created for each region and are processed in parallel.
      */
     @Override
-    protected AbstractParallelMode createParallelMode() {
+    protected AbstractParallelMode createParallelMode() throws FileNotFoundException {
         return new AbstractParallelMode() {
             @Override
             void produceTasks() throws InterruptedException {
@@ -91,10 +92,11 @@ public class SplicingMode extends AbstractMode {
         }
 
         @Override
-        public OutputStream call() {
+        public OutputStream call() throws FileNotFoundException {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             PrintStream out = new PrintStream(baos);
-            VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
+            String regionVarsResultFileName = instance().outputFileName + "_" + region.printRegion();
+            VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, regionVarsResultFileName);
             variantPrinter.setOut(out);
             processRegion(region, variantPrinter);
             out.close();

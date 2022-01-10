@@ -62,12 +62,11 @@ public class VariationUtils {
     /**
      * Find the consensus sequence in soft-clipped reads. Consensus is called if
      * the matched nucleotides are &gt;90% of all softly clipped nucleotides.
-     * @param softClip soft-clipped sequences    $scv
+     * @param softClip soft-clipped sequences  $scv
      * @param dir not used now, will be used when adaptor option will be added
      * @return consensus sequence
      */
-    public static String findconseq(Sclip softClip,
-                                    int dir) {
+    public static String findconseq(Sclip softClip, int dir) {
         if (softClip.sequence != null) {
             return softClip.sequence;
         }
@@ -112,7 +111,7 @@ public class VariationUtils {
         String SEQ;
         Integer ntSize = softClip.nt.size();
         if (total != 0
-                && match / (double)total > 0.9
+                && match / (double)total > 0.85
                 && seq.length() / 1.5 > ntSize - seq.length()
                 && (seq.length() / (double)ntSize > 0.8
                 || ntSize - seq.length() < 10

@@ -11,10 +11,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +32,7 @@ import static com.astrazeneca.vardict.data.scopedata.GlobalReadOnlyScope.setMode
  */
 public class VarDictLauncher {
     private List<List<Region>> segments;
-    private ReferenceResource referenceResource;
+    final private ReferenceResource referenceResource;
 
     public VarDictLauncher(ReferenceResource referenceResource) {
         this.referenceResource = referenceResource;
@@ -45,7 +42,7 @@ public class VarDictLauncher {
      * Initialize resources and starts the needed VarDict mode (amplicon/simple/somatic/splicing).
      * @param config starting configuration
      */
-    public void start(Configuration config) {
+    public void start(Configuration config) throws FileNotFoundException {
         initResources(config);
 
         final Configuration conf = instance().conf;
@@ -128,7 +125,7 @@ public class VarDictLauncher {
      * @param conf Vardict Configuration (contains amplicon based calling parameter)
      * @return tuple of amplicon parameters (distance to the edges and overlap fraction), zero based parameter
      * and list of lines from BED file
-     * @throws IOException
+     * @throws IOException some exceptions occurs in read bed file
      */
     private Tuple.Tuple3<String, Boolean, List<String>> readBedFile(Configuration conf) throws IOException {
         String ampliconParameters = conf.ampliconBasedCalling;
@@ -188,7 +185,6 @@ public class VarDictLauncher {
             SAMFileHeader header = reader.getFileHeader();
             Map<String, Integer> chrs = new HashMap<>();
             for (SAMSequenceRecord record : header.getSequenceDictionary().getSequences()) {
-                record.getSequenceLength();
                 String sn = record.getSequenceName();
                 int ln = record.getSequenceLength();
                 chrs.put(sn, ln);

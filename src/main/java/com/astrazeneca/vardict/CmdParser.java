@@ -70,6 +70,8 @@ public class CmdParser {
         config.removeDuplicatedReads = cmd.hasOption("t");
         config.moveIndelsTo3 = cmd.hasOption("3");
         config.samfilter = cmd.getOptionValue("F", "0x504");
+        config.outputFileName = cmd.getOptionValue("output");
+        config.hotspotFileName = cmd.getOptionValue("hotspot", "core_hotspots.vcf");
 
         if (cmd.hasOption("z")) {
             config.zeroBased = 1 == getIntValue(cmd, "z", 1);
@@ -112,12 +114,14 @@ public class CmdParser {
 
         config.numberNucleotideToExtend = getIntValue(cmd, "x", 0);
         config.freq = getDoubleValue(cmd, "f", 0.01d);
+        config.highQualFreq = getDoubleValue(cmd, "qf", 0.0038d);
         config.minr = getIntValue(cmd, "r", 2);
-        config.minBiasReads = getIntValue(cmd, "B", 2);
+        config.bias = getDoubleValue(cmd, "SB", 0.01d);
+        config.minBiasReads = getIntValue(cmd, "B", 6);
         if (cmd.hasOption("Q")) {
             config.mappingQuality = ((Number) cmd.getParsedOptionValue("Q")).intValue();
         }
-        config.goodq = getDoubleValue(cmd, "q", 22.5);
+        config.goodq = getDoubleValue(cmd, "q", 20);
         config.mismatch = getIntValue(cmd, "m", 8);
         config.trimBasesAfter = getIntValue(cmd, "T", 0);
         config.vext = getIntValue(cmd, "X", 2);
@@ -125,7 +129,7 @@ public class CmdParser {
         if (cmd.hasOption("Z")) {
             config.downsampling = getDoubleValue(cmd, "Z", 0);
         }
-        config.qratio = getDoubleValue(cmd, "o", 1.5d);
+        config.qratio = getDoubleValue(cmd, "o", 0.5d);
         config.mapq = getDoubleValue(cmd, "O", 0);
         config.lofreq = getDoubleValue(cmd, "V", 0.05d);
         config.indelsize = getIntValue(cmd, "I", 50);
@@ -171,6 +175,7 @@ public class CmdParser {
         if (cmd.hasOption("DP")) {
             String defaultPrinter = cmd.getOptionValue("DP", PrinterType.OUT.name());
             switch(defaultPrinter) {
+                case "FN": config.printerType = PrinterType.FN; break;
                 case "OUT": config.printerType = PrinterType.OUT; break;
                 case "ERR": config.printerType = PrinterType.ERR; break;
                 default: config.printerType = PrinterType.OUT;
@@ -377,9 +382,16 @@ public class CmdParser {
                 .isRequired(false)
                 .create('r'));
 
+        options.addOption(OptionBuilder.withArgName("double")
+                .hasArg(true)
+                .withDescription("The minimum single strand reads fraction to determine strand bias, default 0.01")
+                .withType(Number.class)
+                .isRequired(false)
+                .create("SB"));
+
         options.addOption(OptionBuilder.withArgName("INT")
                 .hasArg(true)
-                .withDescription("The minimum # of reads to determine strand bias, default 2")
+                .withDescription("The minimum # of reads to determine strand bias, default 6")
                 .withType(Number.class)
                 .isRequired(false)
                 .create('B'));
@@ -441,7 +453,7 @@ public class CmdParser {
 
         options.addOption(OptionBuilder.withArgName("Qratio")
                 .hasArg(true)
-                .withDescription("The Qratio of (good_quality_reads)/(bad_quality_reads+0.5).  The quality is defined by -q option.  Default: 1.5")
+                .withDescription("The Qratio of (good_quality_reads)/(bad_quality_reads+0.5) for (<0.01) low frequency mutations.  The quality is defined by -q option.  Default: 0.5")
                 .withType(Number.class)
                 .isRequired(false)
                 .create('o'));
@@ -507,6 +519,22 @@ public class CmdParser {
                 .withLongOpt("default-printer")
                 .create("DP"));
 
+        options.addOption(OptionBuilder.withArgName("string")
+                .hasArg(true)
+                .withDescription("The output file name used for FN pointer type.")
+                .withType(String.class)
+                .isRequired(false)
+                .withLongOpt("output-filename")
+                .create("output"));
+
+        options.addOption(OptionBuilder.withArgName("string")
+                .hasArg(true)
+                .withDescription("The hotspot file name used for hotspot sites filter.")
+                .withType(String.class)
+                .isRequired(false)
+                .withLongOpt("hotspot-file")
+                .create("hotspot"));
+
         options.addOption(OptionBuilder.withArgName("INT")
                 .hasArg(true)
                 .withDescription("The number of STD. A pair will be considered for DEL " +
@@ -552,7 +580,7 @@ public class CmdParser {
         options.addOption(OptionBuilder.withArgName("string")
                 .hasArg(true)
                 .withDescription("Filter adaptor sequences so that they are not used in realignment. Multiple adaptors can be supplied " +
-                        "by setting them with comma, like: --adaptor ACGTTGCTC,ACGGGGTCTC,ACGCGGCTAG .")
+                        "by setting them with comma, like: --adaptor ACGTTGCTC,ACGGGGTCTC,ACGCGGCTAG.")
                 .withType(String.class)
                 .isRequired(false)
                 .create("adaptor"));

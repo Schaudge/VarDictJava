@@ -1,5 +1,6 @@
 package com.astrazeneca.vardict.printers;
 
+import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 
@@ -45,11 +46,12 @@ public abstract class VariantPrinter {
      * @param type needed type (usually from instance)
      * @return created specific VariantPrinter
      */
-    public static VariantPrinter createPrinter(PrinterType type) {
+    public static VariantPrinter createPrinter(PrinterType type, String outputFileName) throws FileNotFoundException {
         switch(type) {
+            case FN:  return new FileOutVariantPrinter(outputFileName);
             case OUT: return new SystemOutVariantPrinter();
             case ERR: return new SystemErrVariantPrinter();
             default:  return new SystemOutVariantPrinter();
-            }
+        }
     }
 }

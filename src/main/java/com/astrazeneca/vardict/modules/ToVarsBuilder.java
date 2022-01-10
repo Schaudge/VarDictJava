@@ -141,10 +141,11 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
                 //temporary array used for debugging
                 List<String> debugLines = new ArrayList<>();
 
-                createVariant(duprate, alignedVariants, position, varsAtCurPosition, totalPosCoverage, var, debugLines, keys, hicov);
-                totalPosCoverage = createInsertion(duprate, position, totalPosCoverage, var, debugLines, hicov);
+                createVariant(duprate, alignedVariants, region.chr, position, varsAtCurPosition, totalPosCoverage,
+                        var, debugLines, keys, hicov, config.hotspotSiteTable);
+                totalPosCoverage = createInsertion(duprate, region.chr, position, totalPosCoverage, var,
+                        debugLines, hicov, config.hotspotSiteTable);
                 sortVariants(var);
-
                 double maxfreq = collectVarsAtPosition(alignedVariants, position, var);
 
                 if (!config.doPileup && maxfreq <= config.freq && instance().ampliconBasedCalling == null) {
@@ -153,6 +154,7 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
                         continue;
                     }
                 }
+
                 //if reference variant has frequency more than $FREQ, set genotype1 to reference variant
                 //else if non-reference variant exists, set genotype1 to first (largest quality*coverage) variant
                 //otherwise set genotype1 to reference variant
@@ -267,6 +269,7 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
     /**
      * Collect variants to map of position to Vars and fill the data about reference variant and description
      * strings on position
+     * !!! *** Make the maxfreq = 1.0 if var meets some hotspot sites. *** !!!
      * @param alignedVariants map to be filled
      * @param position position to be put in map
      * @param var list of variants to be sorted in place
@@ -275,6 +278,7 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
     private double collectVarsAtPosition(Map<Integer, Vars> alignedVariants, int position, List<Variant> var) {
         double maxfreq = 0;
         for (Variant tvar : var) {
+            if (tvar.hotspot) maxfreq = 1.0;
             //If variant description string is 1-char base and it matches reference base at this position
             if (tvar.descriptionString.equals(String.valueOf(ref.get(position)))) {
                 //this is a reference variant
@@ -312,15 +316,17 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
     /**
      * Creates insertion variant from each variation on this position and adds it to the list of aligned variants.
      * @param duprate duplication rate of insertion
+     * @param chromosome chromosome of the non-insertion variant (used for hotspot map)
      * @param position position of the insertion start
      * @param totalPosCoverage current total position coverage (total depth) that can be updated by extra counts
      * @param var list of variants at the position to be updated
      * @param debugLines list of debug lines to be updated
      * @param hicov position coverage by high quality reads
+     * @param hotspotTable map of hotspot site table to mark
      * @return updated total position coverage
      */
-    int createInsertion(double duprate, int position, int totalPosCoverage,
-                        List<Variant> var, List<String> debugLines, int hicov) {
+    int createInsertion(double duprate, String chromosome, int position, int totalPosCoverage,
+                        List<Variant> var, List<String> debugLines, int hicov, HashMap<String, Boolean> hotspotTable) {
         //Handle insertions separately
         Map<String, Variation> insertionVariations = getInsertionVariants().get(position);
         if (insertionVariations != null) {
@@ -351,7 +357,7 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
                 // Also commented in Perl
                 // hicov += hicnt;
 
-                //adjust position coverage if variant count is more than position coverage and no more than
+                // adjust position coverage if variant count is more than position coverage and no more than
                 // position coverage + extracnt
                 int ttcov = totalPosCoverage;
                 if (cnt.varsCount > totalPosCoverage && cnt.extracnt != 0 &&cnt.varsCount - totalPosCoverage < cnt.extracnt) {
@@ -396,6 +402,8 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
                 tvref.hicnt = hicnt;
                 tvref.hicov = hicov;
                 tvref.duprate = duprate;
+                String uniqHotspotMapId = chromosome + ":" + String.valueOf(position) + ":" + descriptionString;
+                tvref.hotspot = hotspotTable != null && hotspotTable.containsKey(uniqHotspotMapId) ? true : false;
 
                 var.add(tvref);
                 if (instance().conf.debug) {
@@ -410,6 +418,7 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
      * Creates non-insertion variant from each variation on this position and adds it to the list of aligned variants.
      * @param duprate duplication rate of non-insertion variant
      * @param alignedVars map of variants for position to get SV info
+     * @param chromosome chromosome of the non-insertion variant (used for hotspot map)
      * @param position position of the non-insertion variant start
      * @param nonInsertionVariations map of description strings and intermediate variations
      * @param totalPosCoverage current total position coverage (total depth) that can be updated by extra counts
@@ -417,10 +426,11 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
      * @param debugLines list of debug lines to be updated
      * @param keys sorted list of variant description strings
      * @param hicov position coverage by high quality reads
+     * @param hotspotTable map of hotspot site table to mark
      */
-    void createVariant(double duprate, Map<Integer, Vars> alignedVars, int position,
+    void createVariant(double duprate, Map<Integer, Vars> alignedVars, String chromosome, int position,
                        VariationMap<String, Variation> nonInsertionVariations, int totalPosCoverage, List<Variant> var,
-                       List<String> debugLines, List<String> keys, int hicov) {
+                       List<String> debugLines, List<String> keys, int hicov, HashMap<String, Boolean> hotspotTable) {
         //Loop over all variants found for the position except insertions
         for (String descriptionString : keys) {
             if (descriptionString.equals("SV")) {
@@ -478,6 +488,8 @@ public class ToVarsBuilder implements Module<RealignedVariationData, AlignedVars
             tvref.hicnt = hicnt;
             tvref.hicov = hicov;
             tvref.duprate = duprate;
+            String uniqHotspotMapId = chromosome + ":" + String.valueOf(position) + ":" + descriptionString;
+            tvref.hotspot = hotspotTable != null && hotspotTable.containsKey(uniqHotspotMapId) ? true : false;
 
             //append variant record
             var.add(tvref);

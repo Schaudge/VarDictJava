@@ -9,6 +9,7 @@ import com.astrazeneca.vardict.data.scopedata.VariationData;
 import com.astrazeneca.vardict.modules.*;
 import com.astrazeneca.vardict.printers.VariantPrinter;
 
+import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.*;
@@ -97,29 +98,33 @@ public abstract class AbstractMode {
                 .thenApply(new CigarParser(false)::process);
     }
 
-    public abstract void notParallel();
+    public abstract void notParallel() throws FileNotFoundException;
 
-    public void parallel() {
+    public void parallel() throws FileNotFoundException {
         createParallelMode().process();
     }
 
-    protected abstract AbstractParallelMode createParallelMode();
+    protected abstract AbstractParallelMode createParallelMode() throws FileNotFoundException;
 
     /**
      * Abstract class for parallel modes of VarDict. Initializes executor, starts tasks and prints the variants.
      * The tasks producer must be overriding in the childs.
      */
     protected static abstract class AbstractParallelMode {
-        static final int CAPACITY = 10;
+        static final int CAPACITY = 512;
 
         final ExecutorService executor = Executors.newFixedThreadPool(instance().conf.threads);
         final BlockingQueue<Future<OutputStream>> toPrint = new LinkedBlockingQueue<>(CAPACITY);
+        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, instance().outputFileName);
+
+        protected AbstractParallelMode() throws FileNotFoundException {
+        }
 
         void process() {
             executor.submit(() -> {
                 try {
                     produceTasks();
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (InterruptedException | FileNotFoundException | ExecutionException e) {
                     throw new RuntimeException(e);
                 }
             });
@@ -129,7 +134,6 @@ public abstract class AbstractMode {
                     if (wrk == LAST_SIGNAL_FUTURE) {
                         break;
                     }
-                    VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
                     variantPrinter.print(wrk.get());
                 }
             } catch (InterruptedException | ExecutionException e) {
@@ -139,7 +143,7 @@ public abstract class AbstractMode {
             executor.shutdown();
         }
 
-        abstract void produceTasks() throws InterruptedException, ExecutionException;
+        abstract void produceTasks() throws InterruptedException, ExecutionException, FileNotFoundException;
     }
 
     /**

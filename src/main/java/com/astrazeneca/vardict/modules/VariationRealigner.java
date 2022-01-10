@@ -64,7 +64,7 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
     private VariantPrinter variantPrinter;
 
     /**
-     * Starts the filtering of prepared SV structures, adjusting counts of MNPs and realining of indels and softclips.
+     * Starts the filtering of prepared SV structures, adjusting counts of MNPs and realigning of indels and soft-clips.
      * @param scope variation data from the CigarParser that can be realigned. Contains maps of insertion
      *              and non-insertion variations.
      * @return realigned variations maps
@@ -383,19 +383,19 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
 
     public void realignIndels()  {
         if (instance().conf.y)
-            System.err.println("Start Realigndel");
+            System.err.println("Start Realign deletion");
         realigndel(bams, positionToDeletionsCount);
         if (instance().conf.y)
-            System.err.println("Start Realignins");
+            System.err.println("Start Realign insertion");
         realignins(positionToInsertionCount);
         if (instance().conf.y)
-            System.err.println("Start Realignlgdel");
+            System.err.println("Start Realign large deletion");
         realignlgdel(svStructures.svfdel, svStructures.svrdel);
         if (instance().conf.y)
-            System.err.println("Start Realignlgins30");
+            System.err.println("Start Realign large insertion 30");
         realignlgins30();
         if (instance().conf.y)
-            System.err.println("Start Realignlgins");
+            System.err.println("Start Realign large insertion");
         realignlgins(svStructures.svfdup, svStructures.svrdup);
     }
 
@@ -843,7 +843,9 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
                         if (instance().conf.y) {
                             System.err.printf("    ins5: %s %s %s %s VN: %s iCnt: %s vCnt: %s\n", position, sc5pp, seq, wupseq, vn, insertionCount, tv.varsCount);
                         }
-                        if (!seq.isEmpty() && ismatch(seq, wupseq, -1)) {
+                        // Modified By Schaudge King
+                        String insmtseq = inslen + extra.length() < seq.length() ? seq.substring(0, inslen + extra.length() + 1) : seq;
+                        if (!seq.isEmpty() && ismatch(insmtseq, wupseq, -1)) {
                             if (instance().conf.y) {
                                 System.err.printf("      ins5: %s %s %s %s VN: %s iCnt: %s cCnt: %s used\n", position, sc5pp, seq, wupseq, vn, insertionCount, tv.varsCount);
                             }
@@ -871,7 +873,12 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
                         if (instance().conf.y) {
                             System.err.printf("    ins3: %s %s %s %s VN: %s iCnt: %s vCnt: %s\n", position, sc3pp, seq, sanpseq, vn, insertionCount, tv.varsCount);
                         }
-                        String mseq = !ins3.isEmpty() ? sanpseq : substr(sanpseq, sc3pp - position - 1);
+                        // REVIEW: adjust the match strategy for insert and soft-clip sequence matcher
+                        // Modified By Schaudge King, 2021-05-04
+                        //String mseq = !ins3.isEmpty() ? sanpseq : substr(sanpseq, sc3pp - position - 1);
+                        int sc_match_start = sc3pp - position - 1;
+                        int sc_match_end = sc_match_start + inslen + extra.length() < sanpseq.length() ? sc_match_start + inslen + extra.length(): sanpseq.length() - 1;
+                        String mseq = !ins3.isEmpty() ? sanpseq : sanpseq.substring(sc_match_start, sc_match_end);
                         if (!seq.isEmpty() && ismatch(seq, mseq, 1)) {
                             if (instance().conf.y) {
                                 System.err.printf("      ins3: %s %s %s VN: %s iCnt: %s vCnt: %s used\n", position, sc3pp, seq, vn, insertionCount, tv.varsCount);
@@ -2090,9 +2097,7 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
      * @param dir direction of seq2 (1 or -1)
      * @return true if seq1 matches seq2 with no more than 3 mismatches
      */
-    public boolean ismatch(String seq1,
-                           String seq2,
-                           int dir) {
+    public boolean ismatch(String seq1, String seq2, int dir) {
         int MM = 3;
         return ismatch(seq1, seq2, dir, MM);
     }
@@ -2107,10 +2112,7 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
      * @param MM length of mismatches for SV
      * @return true if seq1 matches seq2 with no more than MM number of mismatches
      */
-    public boolean ismatch(String seq1,
-                           String seq2,
-                           int dir,
-                           int MM) {
+    public boolean ismatch(String seq1, String seq2, int dir, int MM) {
         if (instance().conf.y) {
             System.err.printf("    Matching two seqs %s %s %s %s\n", seq1, seq2, dir, MM);
         }
@@ -2497,15 +2499,13 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
 
 
     /**
-     * Given a variant sequence, find the mismatches and potential softclipping positions
+     * Given a variant sequence, find the mismatches and potential soft-clipping positions
      * @param ref map of reference bases
      * @param position position $p
      * @param wupseq sequence
      * @return MismatchResult contains mismatches lists and clipping positions
      */
-     MismatchResult findMM5(Map<Integer, Character> ref,
-                                  int position,
-                                  String wupseq) {
+     MismatchResult findMM5(Map<Integer, Character> ref, int position, String wupseq) {
         String seq = wupseq.replaceAll("#|\\^", "");
         int longmm = 3;
         List<Mismatch> mismatches = new ArrayList<>(); // $mm mismatches, mismatch positions, 5 or 3 ends
@@ -2558,7 +2558,7 @@ public class VariationRealigner implements Module<VariationData, RealignedVariat
     }
 
     /**
-     * Given a variant sequence, find the mismatches and potential softclipping positions
+     * Given a variant sequence, find the mismatches and potential soft-clipping positions
      * @param ref map of reference bases
      * @param p position
      * @param sanpseq sequence

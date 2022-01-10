@@ -3,7 +3,13 @@ package com.astrazeneca.vardict;
 import com.astrazeneca.vardict.printers.PrinterType;
 import htsjdk.samtools.ValidationStringency;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -24,6 +30,14 @@ public class Configuration {
      * Path to bed file with regions
      */
     public String bed;
+    /**
+     * Path to hotspot file name for core sites filter
+     */
+    public String hotspotFileName; // --hotspot
+    /**
+     * Path to output file name instead of stdin
+     */
+    public String outputFileName; // --output
     /**
      * The number of nucleotide to extend for each segment
      */
@@ -84,7 +98,7 @@ public class Configuration {
     /**
      * The phred score for a base to be considered a good call
      */
-    public double goodq; // -q, default = 22.5
+    public double goodq; // -q, default = 20
     /**
      * Extension of bp to look for mismatches after insertion or deletion
      */
@@ -96,7 +110,7 @@ public class Configuration {
     /**
      * Indicate whether to perform local realignment
      */
-    public boolean performLocalRealignment; // -k, default false
+    public boolean performLocalRealignment; // -k, default true
     /**
      * The indel size
      */
@@ -104,11 +118,11 @@ public class Configuration {
     /**
      * The cutoff to decide whether a position has read strand bias
      */
-    public double bias = 0.05d;
+    public double bias = 0.01d; // -SB, default 0.01 (0.05 maybe proper for tissue sample, was used by raw version)
     /**
-     * The minimum reads for bias calculation. Default: 2 $minb
+     * The minimum reads for bias calculation. Default: 6 $minb
      */
-    public int minBiasReads = 2; // -B
+    public int minBiasReads = 6; // -B
     /**
      * The minimum # of variance reads. Default: 2. If -p, it is set to 0.
      */
@@ -122,6 +136,12 @@ public class Configuration {
      * The threshold for allele frequency. If -p it is set to -1.
      */
     public double freq = 0.01; // -f
+
+    /**
+     * The threshold for high quality reads allele frequency. Default: 0.0038.
+     */
+    public double highQualFreq = 0.0038; // -qf
+
     /**
      * Indicate to move indels to 3-prime if alternative alignment can be achieved.
      */
@@ -140,9 +160,9 @@ public class Configuration {
      */
     public int readPosFilter = 5; // -P
     /**
-     * The Qratio of (good_quality_reads)/(bad_quality_reads+0.5)
+     * The Qratio of (good_quality_reads)/(bad_quality_reads+0.5) for (<0.01) low frequency mutations.
      */
-    public double qratio = 1.5; // -o
+    public double qratio = 0.5; // -o, default 0.5
     /**
      * The minimum mean mapping quality to be considered. Default: 0.
      */
@@ -322,6 +342,11 @@ public class Configuration {
      */
     public double nonMonomerMsiFrequency = 0.1d;  // -nmfreq
 
+    /**
+     * the HashMap of hotspot site id for filter
+     */
+    public HashMap<String, Boolean> hotspotSiteTable = new HashMap<>();
+
     public boolean isColumnForChromosomeSet() {
         return columnForChromosome >= 0;
     }
@@ -336,6 +361,29 @@ public class Configuration {
 
     public boolean isZeroBasedDefined() {
         return zeroBased != null;
+    }
+
+    public String getOutput() { return outputFileName;}
+
+    public void createHotspotTable() {
+        String line;
+        try {
+            if (Files.exists(Paths.get(hotspotFileName))) {
+                BufferedReader hotspotReader = new BufferedReader(new FileReader(hotspotFileName));
+                if (hotspotFileName.endsWith(".vcf")) {
+                    while ((line = hotspotReader.readLine()) != null)
+                        if (! line.startsWith("#")) {
+                            String[] standardVcfFields = line.split("\t");
+                            hotspotSiteTable.put(standardVcfFields[2], true);
+                        }
+                } else
+                    while ((line = hotspotReader.readLine()) != null)
+                        hotspotSiteTable.put(line, true);
+                hotspotReader.close();
+            }
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+        }
     }
 
     public static class BamNames {

@@ -56,6 +56,7 @@ public class GlobalReadOnlyScope {
     public final String samplem;
     public final String ampliconBasedCalling;
     public final PrinterType printerTypeOut;
+    public final String outputFileName;
     public final Map<String, Integer> adaptorForward;
     public final Map<String, Integer> adaptorReverse;
 
@@ -68,6 +69,7 @@ public class GlobalReadOnlyScope {
         this.samplem = samplem;
         this.ampliconBasedCalling = ampliconBasedCalling;
         this.printerTypeOut = conf.printerType;
+        this.outputFileName = conf.outputFileName;
         this.adaptorForward = adaptorForward;
         this.adaptorReverse = adaptorReverse;
     }

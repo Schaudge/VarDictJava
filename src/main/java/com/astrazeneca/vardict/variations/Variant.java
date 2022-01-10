@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 
-import static com.astrazeneca.vardict.data.scopedata.GlobalReadOnlyScope.instance;
-import static com.astrazeneca.vardict.data.Patterns.ANY_SV;
 import static com.astrazeneca.vardict.Utils.substr;
+import static com.astrazeneca.vardict.data.Patterns.ANY_SV;
+import static com.astrazeneca.vardict.data.scopedata.GlobalReadOnlyScope.instance;
 
 /**
  * Class for holding variant structure
@@ -23,7 +23,7 @@ public class Variant {
      * 4). ... # sequence                  - for insertion/deletion variants followed by short matched sequence
      * 5). ... ^ sequence                  - followed by insertion
      * 6). ... ^ number                    - followed by deletion
-     * 7). ... &amp; sequence                  - for insertion/deletion variants followed by matched sequence
+     * 7). ... &amp; sequence              - for insertion/deletion variants followed by matched sequence
      */
     public String descriptionString;
 
@@ -180,6 +180,11 @@ public class Variant {
     public String vartype = "";
 
     /**
+     * Flag for hotspot site, useful for clinical application
+     */
+    public boolean hotspot = false;
+
+    /**
      * Debug information
      */
     public String DEBUG = "";
@@ -301,8 +306,7 @@ public class Variant {
             return "Complex";
         } else if (refallele.charAt(0) != varallele.charAt(0)) {
             return "Complex";
-        } else if (refallele.length() == 1 && varallele.length() > 1
-                && varallele.startsWith(refallele)) {
+        } else if (refallele.length() == 1 && varallele.length() > 1 && varallele.startsWith(refallele)) {
             return "Insertion";
         } else if (refallele.length() > 1 && varallele.length() == 1
                 && refallele.startsWith(varallele)) {
@@ -320,25 +324,25 @@ public class Variant {
      */
     public boolean isGoodVar(Variant referenceVar, String type,
                              Set<String> splice) {
-        if (this == null || this.refallele == null || this.refallele.isEmpty()) {
+        if (this.refallele == null || this.refallele.isEmpty()) {
             return false;
         }
         if (type == null || type.isEmpty()) {
             type = varType();
         }
-        if (frequency < instance().conf.freq
+        if (!hotspot && (frequency < instance().conf.freq || highQualityReadsFrequency < instance().conf.highQualFreq
+                || (meanQuality < instance().conf.goodq && frequency < 0.006d))
                 || hicnt < instance().conf.minr
-                || meanPosition < instance().conf.readPosFilter
-                || meanQuality < instance().conf.goodq) {
+                || meanPosition < instance().conf.readPosFilter) {
             return false;
         }
 
-        if (referenceVar != null && referenceVar.hicnt > instance().conf.minr && frequency < 0.25d) {
+        if (referenceVar != null && referenceVar.hicnt > instance().conf.minr && frequency < 0.05d) {
             //The reference allele has much better mean mapq than var allele, thus likely false positives
             double d = meanMappingQuality + refallele.length() + varallele.length();
             double f = (1 + d) / (referenceVar.meanMappingQuality + 1);
             if ((d - 2 < 5 && referenceVar.meanMappingQuality > 20)
-                    || f < 0.25d) {
+                    || f < 0.15d) {
                 return false;
             }
         }
@@ -346,13 +350,16 @@ public class Variant {
         if (type.equals("Deletion") && splice.contains(startPosition + "-" + endPosition)) {
             return false;
         }
-        if (highQualityToLowQualityRatio < instance().conf.qratio) {
-            return false;
-        }
-        if (frequency > 0.30d) {
+
+        if (frequency > 0.05d) {
             return true;
         }
-        if (meanMappingQuality < instance().conf.mapq) {
+
+        if (!hotspot && highQualityToLowQualityRatio < instance().conf.qratio && frequency < 0.01d) {
+            return false;
+        }
+
+        if (!hotspot && meanMappingQuality < instance().conf.mapq) {
             return false;
         }
         if (msi >= 15 && frequency <= instance().conf.monomerMsiFrequency && msint == 1) {
@@ -361,8 +368,8 @@ public class Variant {
         if (msi >= 12 && frequency <= instance().conf.nonMonomerMsiFrequency && msint > 1) {
             return false;
         }
-        if (strandBiasFlag.equals("2;1") && frequency < 0.20d) {
-            if (type == null || type.equals("SNV") || (refallele.length() < 3 && varallele.length() < 3)) {
+        if (!hotspot && strandBiasFlag.equals("2;1") && frequency < 0.03d) {
+            if (type.equals("SNV") || (refallele.length() < 3 && varallele.length() < 3)) {
                 return false;
             }
         }

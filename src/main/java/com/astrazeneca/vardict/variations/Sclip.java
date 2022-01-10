@@ -3,7 +3,7 @@ package com.astrazeneca.vardict.variations;
 import java.util.*;
 
 /**
- * Class to store data about softclips.
+ * Class to store data about soft-clips.
  */
 public class Sclip extends Variation {
     /**

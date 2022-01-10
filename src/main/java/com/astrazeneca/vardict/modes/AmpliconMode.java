@@ -14,6 +14,7 @@ import com.astrazeneca.vardict.printers.VariantPrinter;
 import com.astrazeneca.vardict.variations.Vars;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.*;
@@ -43,8 +44,8 @@ public class AmpliconMode extends AbstractMode {
      * In not parallel mode each region will be processed in sequence.
      */
     @Override
-    public void notParallel() {
-        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
+    public void notParallel() throws FileNotFoundException {
+        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, instance().outputFileName);
 
         for (List<Region> regions : segments) {
             Map<Integer, List<Tuple.Tuple2<Integer, Region>>> pos = new HashMap<>();
@@ -76,10 +77,10 @@ public class AmpliconMode extends AbstractMode {
      * In parallel mode workers are created for each region and are processed in parallel.
      */
     @Override
-    protected AbstractParallelMode createParallelMode() {
+    protected AbstractParallelMode createParallelMode() throws FileNotFoundException {
         return new AbstractParallelMode() {
             @Override
-            void produceTasks() throws InterruptedException, ExecutionException {
+            void produceTasks() throws InterruptedException, FileNotFoundException {
                 for (List<Region> regions : segments) {
                     Map<Integer, List<Tuple.Tuple2<Integer, Region>>> pos = new HashMap<>();
                     int j = 0;
@@ -93,7 +94,7 @@ public class AmpliconMode extends AbstractMode {
                             List<Tuple.Tuple2<Integer, Region>> list = pos.computeIfAbsent(p, k -> new ArrayList<>());
                             list.add(tuple(j, region));
                         }
-                        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
+                        VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, instance().outputFileName);
                         Reference reference = tryToGetReference(region);
                         Scope<InitialData> initialScope = new Scope<>(instance().conf.bam.getBam1(), region,
                                 reference, referenceResource, 0, splice,
@@ -110,11 +111,12 @@ public class AmpliconMode extends AbstractMode {
                     }
 
                     Region lastRegion = currentRegion;
+                    OutputStream baos = new ByteArrayOutputStream();
+                    PrintStream out = new PrintStream(baos);
+                    String regionVarsResultFileName = instance().outputFileName + "_" + currentRegion.printRegion();
+                    VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut, regionVarsResultFileName);
                     CompletableFuture<OutputStream> processAmpliconOutput = CompletableFuture
                             .supplyAsync(() -> {
-                                OutputStream baos = new ByteArrayOutputStream();
-                                PrintStream out = new PrintStream(baos);
-                                VariantPrinter variantPrinter = VariantPrinter.createPrinter(instance().printerTypeOut);
                                 variantPrinter.setOut(out);
                                 new AmpliconPostProcessModule().process(lastRegion, vars, pos, splice, variantPrinter);
                                 out.close();
