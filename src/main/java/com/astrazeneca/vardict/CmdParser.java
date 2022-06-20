@@ -114,7 +114,7 @@ public class CmdParser {
 
         config.numberNucleotideToExtend = getIntValue(cmd, "x", 0);
         config.freq = getDoubleValue(cmd, "f", 0.01d);
-        config.highQualFreq = getDoubleValue(cmd, "qf", 0.0038d);
+        config.highQualFreq = getDoubleValue(cmd, "qf", 0.0028d);
         config.minr = getIntValue(cmd, "r", 2);
         config.bias = getDoubleValue(cmd, "SB", 0.01d);
         config.minBiasReads = getIntValue(cmd, "B", 6);
@@ -314,7 +314,7 @@ public class CmdParser {
 
         options.addOption(OptionBuilder.withArgName("string")
                 .hasArg(true)
-                .withDescription("The sample name to be used directly.  Will overwrite -n option")
+                .withDescription("The sample name to be used directly. Will overwrite -n option")
                 .withType(String.class)
                 .isRequired(false)
                 .create('N'));
@@ -405,11 +405,19 @@ public class CmdParser {
 
         options.addOption(OptionBuilder.withArgName("INT")
                 .hasArg(true)
-                .withDescription("The phred score for a base to be considered a good call.  Default: 25 (for Illumina)\n"
+                .withDescription("The phred score for a base to be considered a good call.  Default: 20 (for Illumina)\n"
                         + "For PGM, set it to ~15, as PGM tends to under estimate base quality.")
                 .withType(Number.class)
                 .isRequired(false)
                 .create('q'));
+
+        options.addOption(OptionBuilder.withArgName("double")
+                .hasArg(true)
+                .withDescription("The minimum variation frequency for high quality base. Default: 0.0028")
+                .withType(Number.class)
+                .isRequired(false)
+                .withLongOpt("quality-freq")
+                .create("qf"));
 
         options.addOption(OptionBuilder.withArgName("INT")
                 .hasArg(true)
@@ -444,7 +452,7 @@ public class CmdParser {
 
         options.addOption(OptionBuilder.withArgName("double")
                 .hasArg(true)
-                .withDescription("For downsampling fraction.  e.g. 0.7 means roughly 70% downsampling.  Default: No downsampling.  Use with caution.  The\n"
+                .withDescription("For downsampling fraction.  e.g. 0.7 means roughly 70% downsampling. Default: No downsampling.  Use with caution.  The\n"
                         + "downsampling will be random and non-reproducible.")
                 .withType(Number.class)
                 .isRequired(false)

@@ -138,14 +138,14 @@ public class Configuration {
     public double freq = 0.01; // -f
 
     /**
-     * The threshold for high quality reads allele frequency. Default: 0.0038.
+     * The threshold for high quality reads allele frequency. Default: 0.0028.
      */
-    public double highQualFreq = 0.0038; // -qf
+    public double highQualFreq = 0.0028; // -qf
 
     /**
      * Indicate to move indels to 3-prime if alternative alignment can be achieved.
      */
-    public boolean moveIndelsTo3 = false; //-3
+    public boolean moveIndelsTo3 = false; // -3
 
     /**
      * The hexical to filter reads.
@@ -215,7 +215,7 @@ public class Configuration {
     /**
      * Threads count to use in multithreading mode
      */
-    public int threads; //-th
+    public int threads; // -th
 
     /**
      * The larger seed size
@@ -372,7 +372,8 @@ public class Configuration {
                 BufferedReader hotspotReader = new BufferedReader(new FileReader(hotspotFileName));
                 if (hotspotFileName.endsWith(".vcf")) {
                     while ((line = hotspotReader.readLine()) != null)
-                        if (! line.startsWith("#")) {
+                        if (line.startsWith("#")) continue;
+                        else {
                             String[] standardVcfFields = line.split("\t");
                             hotspotSiteTable.put(standardVcfFields[2], true);
                         }

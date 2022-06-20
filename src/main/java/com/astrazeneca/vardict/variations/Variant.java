@@ -306,7 +306,8 @@ public class Variant {
             return "Complex";
         } else if (refallele.charAt(0) != varallele.charAt(0)) {
             return "Complex";
-        } else if (refallele.length() == 1 && varallele.length() > 1 && varallele.startsWith(refallele)) {
+        } else if (refallele.length() == 1 && varallele.length() > 1
+                && varallele.startsWith(refallele)) {
             return "Insertion";
         } else if (refallele.length() > 1 && varallele.length() == 1
                 && refallele.startsWith(varallele)) {
@@ -324,20 +325,25 @@ public class Variant {
      */
     public boolean isGoodVar(Variant referenceVar, String type,
                              Set<String> splice) {
-        if (this.refallele == null || this.refallele.isEmpty()) {
+        if (this == null || this.refallele == null || this.refallele.isEmpty()) {
             return false;
         }
         if (type == null || type.isEmpty()) {
             type = varType();
         }
+
+        if (frequency > 0.05d && meanMappingQuality > instance().conf.mapq && msi < 2) {
+            return true;
+        }
+
         if (!hotspot && (frequency < instance().conf.freq || highQualityReadsFrequency < instance().conf.highQualFreq
-                || (meanQuality < instance().conf.goodq && frequency < 0.006d))
+                || (meanQuality < instance().conf.goodq && frequency < 0.005d))
                 || hicnt < instance().conf.minr
                 || meanPosition < instance().conf.readPosFilter) {
             return false;
         }
 
-        if (referenceVar != null && referenceVar.hicnt > instance().conf.minr && frequency < 0.05d) {
+        if (referenceVar != null && referenceVar.hicnt > instance().conf.minr && frequency < 0.03d) {
             //The reference allele has much better mean mapq than var allele, thus likely false positives
             double d = meanMappingQuality + refallele.length() + varallele.length();
             double f = (1 + d) / (referenceVar.meanMappingQuality + 1);
@@ -351,10 +357,6 @@ public class Variant {
             return false;
         }
 
-        if (frequency > 0.05d) {
-            return true;
-        }
-
         if (!hotspot && highQualityToLowQualityRatio < instance().conf.qratio && frequency < 0.01d) {
             return false;
         }
@@ -362,14 +364,16 @@ public class Variant {
         if (!hotspot && meanMappingQuality < instance().conf.mapq) {
             return false;
         }
+
         if (msi >= 15 && frequency <= instance().conf.monomerMsiFrequency && msint == 1) {
             return false;
         }
+
         if (msi >= 12 && frequency <= instance().conf.nonMonomerMsiFrequency && msint > 1) {
             return false;
         }
         if (!hotspot && strandBiasFlag.equals("2;1") && frequency < 0.03d) {
-            if (type.equals("SNV") || (refallele.length() < 3 && varallele.length() < 3)) {
+            if (type == null || type.equals("SNV") || (refallele.length() < 3 && varallele.length() < 3)) {
                 return false;
             }
         }
